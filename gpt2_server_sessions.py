@@ -69,6 +69,7 @@ class gpt2_server_sessions:
     def reset_model(self):
         self.init_state(self.server_configs['nsamples'],self.server_configs['length'],self.server_configs['temperature'],self.server_configs['top_k'],self.server_configs['model_name'])
         self.preinit_model()
+        #self.shutdown()
         self.session = tf.InteractiveSession(graph=tf.Graph())
         self.init_model()
 

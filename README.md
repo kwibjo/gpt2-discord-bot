@@ -35,10 +35,9 @@ _This should download the gpt-2 model. `117M` is the smallest model, `345M` is a
 python3 gpt-chatbot-client.py
 ```
 
-- initialize the bot through the !init command on your Discord Server (initializes it for all servers the bot is on)
 - use it!
+
 ```use
-!init
 !talk Complete this sentence
 ```
 

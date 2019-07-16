@@ -24,22 +24,15 @@ class GPT2Bot(commands.Cog):
         
         self.bot = bot
         self.not_ready_s = "Bot has not been initialized. Please type !init to initialize the bot."
-        #self.reset_model()
         self.is_interfering = True
         self.not_ready = True
         self.sizeLimit=500
         self.guildIdList = []
-        #guilds = bot.guilds
-        #for guild in guilds:
-        #    self.guildIdList.append(guild.id)
         self.serverSessions = {}
-        #for serverid in self.guildIdList:
-            #self.serverSessions[serverid] = gpt2_server_sessions(serverid)
         self.is_interfering = False
 
     @commands.command()
     async def init(self, ctx):
-        self.not_ready = False
         guilds = await self.bot.fetch_guilds(limit=150).flatten()
         for guild in guilds:
             self.guildIdList.append(guild.id)
@@ -47,6 +40,7 @@ class GPT2Bot(commands.Cog):
         for serverid in self.guildIdList:
             self.serverSessions[serverid] = gpt2_server_sessions(serverid)
         await ctx.send("GPT-2 AI initialized")
+        self.not_ready = False
 
     @commands.command()
     @commands.guild_only()
@@ -181,6 +175,29 @@ class GPT2Bot(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             text = "Sorry {}, you do not have permissions to do that!".format(ctx.message.author)
             await ctx.send(text)
-        
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        logging.info('Joined Guild.')
+        self.serverSessions[guild.id] = gpt2_server_sessions(guild.id)
+        logging.info('Spawned GPT-2 for new guild')
+
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild):
+        logging.info('Removed from Guild.')
+        self.serverSessions[guild.id].shutdown()
+        logging.info('Despawned GPT-2 for said guild')
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        guilds = await self.bot.fetch_guilds(limit=150).flatten()
+        for guild in guilds:
+            self.guildIdList.append(guild.id)
+        self.serverSessions = {}
+        for serverid in self.guildIdList:
+            self.serverSessions[serverid] = gpt2_server_sessions(serverid)
+        logging.info('Spawned GPT-2')
+        self.not_ready = False
+
 def setup(bot):
     bot.add_cog(GPT2Bot(bot))
