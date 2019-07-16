@@ -1,6 +1,6 @@
-
-import tensorflow as tf
 from . import model
+import tensorflow as tf
+
 
 def top_k_logits(logits, k):
     if k == 0:

@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import logging
+import copy
 import functools
 import os
 import sys
@@ -53,7 +54,7 @@ class gpt2_server_sessions:
             logging.error("Can't get samples longer than window size: %s" % self.hparams.n_ctx)
 
     def init_model(self):
-        self.context = tf.placeholder(tf.int32, [1, None])
+        self.context = tf.placeholder(tf.int32, [self.batch_size, None])
         self.output = sample.sample_sequence(
             hparams=self.hparams, length=self.length,
             #start_token=self.enc.encoder['<|endoftext|>'],
@@ -62,21 +63,27 @@ class gpt2_server_sessions:
             temperature=self.temperature, top_k=self.top_k
         )
 
-        self.saver = tf.train.Saver()
+        self.varloader = tf.train.Saver()
+        #self.session.run(tf.global_variables_initializer())
         self.ckpt = tf.train.latest_checkpoint(os.path.join('models', self.model_name))
-        self.saver.restore(self.session, self.ckpt)
-        self.is_inferencing = False
+        #self.modelloader = tf.train.import_meta_graph(self.ckpt+".meta")
+        self.varloader.restore(self.session, self.ckpt)
+        #self.modelloader.restore(self.session, self.ckpt)
+        #self.is_inferencing = False
 
     def reset_model(self):
         self.init_state(self.server_configs['nsamples'],self.server_configs['length'],self.server_configs['temperature'],self.server_configs['top_k'],self.server_configs['model_name'])
         self.preinit_model()
         #self.shutdown()
-        self.session = tf.InteractiveSession(graph=tf.Graph())
+        self.session = tf.Session()#graph=tf.Graph()) #Interactive?
+        #tf.set_random_seed(self.seed)
+        #self.uncon_session = tf.Session(graph=tf.Graph())
         self.init_model()
 
     def shutdown(self):
         logging.info('Shutting down GPT.')
         self.session.close()
+        #self.uncon_session.close()
 
     def writeConfig(self,server_id):
         with open(os.path.join(self.conf_path, str(server_id) + ".json"), "w", encoding='utf-8') as f:
@@ -102,10 +109,11 @@ class gpt2_server_sessions:
                     self.context: [context_tokens for _ in range(1)]
                 })[:, len(context_tokens):]
     def generate_uncon_text(self):
-        self.output = sample.sample_sequence(
+        enc = self.enc
+        uncon_output = sample.sample_sequence(
             hparams=self.hparams, length=self.length,
-            start_token=self.enc.encoder['<|endoftext|>'],
+            start_token=int(enc.encoder["<|endoftext|>"]),
             batch_size=self.batch_size,
-            temperature=self.temperature, top_k=self.top_k
+            temperature=self.temperature, top_k=self.top_k, top_p=0.0
         )[:, 1:]
-        return self.session.run(self.output)
+        return self.session.run(uncon_output)

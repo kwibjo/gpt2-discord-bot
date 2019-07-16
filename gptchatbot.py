@@ -64,7 +64,7 @@ class GPT2Bot(commands.Cog):
                     text_generator = functools.partial(self.generate_text, server_id, context_tokens)
                     out = await self.bot.loop.run_in_executor(None, text_generator)
                 else:
-                    text_generator = functools.partial(self.generate_text, server_id, "")
+                    text_generator = functools.partial(self.generate_uncon_text, server_id)
                     out = await self.bot.loop.run_in_executor(None, text_generator)
                 response = message + self.serverSessions[server_id].enc.decode(out[0])
                 logging.info('RESPONSE GENERATED IN :' + str(round(time.time() - start, 2)) + ' seconds.')
@@ -83,10 +83,10 @@ class GPT2Bot(commands.Cog):
         self.is_interfering = False
     
     def generate_text(self, server_id, context_tokens):
-        if context_tokens:
-            return self.serverSessions[server_id].generate_text(context_tokens)
-        else:
-            return self.serverSessions[server_id].generate_uncon_text()
+        return self.serverSessions[server_id].generate_text(context_tokens)
+
+    def generate_uncon_text(self, server_id):
+        return self.serverSessions[server_id].generate_uncon_text()
 
     @commands.command()
     @commands.guild_only()
@@ -182,6 +182,11 @@ class GPT2Bot(commands.Cog):
             await ctx.send(text)
     @talk.error
     async def talk_error(self, ctx, error):
+        if isinstance(error, commands.errors.CommandInvokeError):
+            self.is_interfering=False
+            logging.info(error.original)
+            print(error.original)
+            await ctx.send('Command failed!')
         if isinstance(error, commands.errors.MissingRequiredArgument):
             #text = "You must deliver a message to me nyan!"
             #await ctx.send(text)
@@ -198,7 +203,7 @@ class GPT2Bot(commands.Cog):
             for _ in range(self.serverSessions[server_id].nsamples):
                 async with ctx.typing():
                     start = time.time()
-                    text_generator = functools.partial(self.generate_text, server_id, "")
+                    text_generator = functools.partial(self.serverSessions[server_id].generate_uncon_text)
                     out = await self.bot.loop.run_in_executor(None, text_generator)
                     response = self.serverSessions[server_id].enc.decode(out[0])
                     logging.info('RESPONSE GENERATED IN :' + str(round(time.time() - start, 2)) + ' seconds.')
@@ -230,14 +235,16 @@ class GPT2Bot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        guilds = await self.bot.fetch_guilds(limit=150).flatten()
-        for guild in guilds:
-            self.guildIdList.append(guild.id)
-        self.serverSessions = {}
-        for serverid in self.guildIdList:
-            self.serverSessions[serverid] = gpt2_server_sessions(serverid)
-        logging.info('Spawned GPT-2')
-        self.not_ready = False
+        if self.not_ready:
+            self.not_ready = False
+            guilds = await self.bot.fetch_guilds(limit=150).flatten()
+            for guild in guilds:
+                self.guildIdList.append(guild.id)
+            self.serverSessions = {}
+            for serverid in self.guildIdList:
+                self.serverSessions[serverid] = gpt2_server_sessions(serverid)
+                logging.info('Spawned GPT-2')
+                self.not_ready = False
 
 def setup(bot):
     bot.add_cog(GPT2Bot(bot))
