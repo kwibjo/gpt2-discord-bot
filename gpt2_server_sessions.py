@@ -62,7 +62,12 @@ class gpt2_server_sessions:
             batch_size=self.batch_size,
             temperature=self.temperature, top_k=self.top_k
         )
-
+        self.uncon_output = sample.sample_sequence(
+            hparams=self.hparams, length=self.length,
+            start_token=int(self.enc.encoder["<|endoftext|>"]),
+            batch_size=self.batch_size,
+            temperature=self.temperature, top_k=self.top_k, top_p=0.0
+        )[:, 1:]
         self.varloader = tf.train.Saver()
         #self.session.run(tf.global_variables_initializer())
         self.ckpt = tf.train.latest_checkpoint(os.path.join('models', self.model_name))
@@ -109,11 +114,4 @@ class gpt2_server_sessions:
                     self.context: [context_tokens for _ in range(1)]
                 })[:, len(context_tokens):]
     def generate_uncon_text(self):
-        enc = self.enc
-        uncon_output = sample.sample_sequence(
-            hparams=self.hparams, length=self.length,
-            start_token=int(enc.encoder["<|endoftext|>"]),
-            batch_size=self.batch_size,
-            temperature=self.temperature, top_k=self.top_k, top_p=0.0
-        )[:, 1:]
-        return self.session.run(uncon_output)
+        return self.session.run(self.uncon_output)
