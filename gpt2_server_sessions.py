@@ -69,12 +69,8 @@ class gpt2_server_sessions:
             temperature=self.temperature, top_k=self.top_k, top_p=0.0
         )[:, 1:]
         self.varloader = tf.train.Saver()
-        #self.session.run(tf.global_variables_initializer())
         self.ckpt = tf.train.latest_checkpoint(os.path.join('models', self.model_name))
-        #self.modelloader = tf.train.import_meta_graph(self.ckpt+".meta")
         self.varloader.restore(self.session, self.ckpt)
-        #self.modelloader.restore(self.session, self.ckpt)
-        #self.is_inferencing = False
 
     def reset_model(self):
         self.init_state(self.server_configs['nsamples'],self.server_configs['length'],self.server_configs['temperature'],self.server_configs['top_k'],self.server_configs['model_name'])

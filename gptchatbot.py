@@ -136,7 +136,7 @@ class GPT2Bot(commands.Cog):
             self.serverSessions[server_id].set_state(int(nsamples), int(length), float(temp), int(top_k), model_name)
             await ctx.trigger_typing()
             self.serverSessions[server_id].preinit_model()
-            self.serverSessions[server_id].session = tf.InteractiveSession(graph=tf.Graph())
+            self.serverSessions[server_id].session = tf.Session()
             await ctx.trigger_typing()
             self.serverSessions[server_id].init_model()
             await ctx.send('Succesfully Set Configuration!')
@@ -166,7 +166,7 @@ class GPT2Bot(commands.Cog):
         self.serverSessions[server_id].set_state(1,200,1,0,'117M')
         await ctx.trigger_typing()
         self.serverSessions[server_id].preinit_model()
-        self.serverSessions[server_id].session = tf.InteractiveSession(graph=tf.Graph())
+        self.serverSessions[server_id].session = tf.Session()
         await ctx.trigger_typing()
         self.serverSessions[server_id].init_model()
 
