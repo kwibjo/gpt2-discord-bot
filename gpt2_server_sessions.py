@@ -56,6 +56,7 @@ class gpt2_server_sessions:
         self.context = tf.placeholder(tf.int32, [1, None])
         self.output = sample.sample_sequence(
             hparams=self.hparams, length=self.length,
+            #start_token=self.enc.encoder['<|endoftext|>'],
             context=self.context,
             batch_size=self.batch_size,
             temperature=self.temperature, top_k=self.top_k
@@ -100,3 +101,11 @@ class gpt2_server_sessions:
         return self.session.run(self.output, feed_dict={
                     self.context: [context_tokens for _ in range(1)]
                 })[:, len(context_tokens):]
+    def generate_uncon_text(self):
+        self.output = sample.sample_sequence(
+            hparams=self.hparams, length=self.length,
+            start_token=self.enc.encoder['<|endoftext|>'],
+            batch_size=self.batch_size,
+            temperature=self.temperature, top_k=self.top_k
+        )[:, 1:]
+        return self.session.run(self.output)
