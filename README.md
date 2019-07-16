@@ -39,6 +39,7 @@ python3 gpt-chatbot-client.py
 
 ```use
 !talk Complete this sentence
+!talk (No text here to generate unconditional sample)
 ```
 
 ### Commands/Settings
