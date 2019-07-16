@@ -55,14 +55,18 @@ class GPT2Bot(commands.Cog):
         server_id = ctx.message.guild.id
         logging.info('Guild: ' + str(server_id))
         self.is_interfering = True
-        context_tokens = self.serverSessions[server_id].enc.encode(message)
+        if message:
+            context_tokens = self.serverSessions[server_id].enc.encode(message)
         for _ in range(self.serverSessions[server_id].nsamples):
             async with ctx.typing():
                 start = time.time()
-                text_generator = functools.partial(self.generate_text, server_id, context_tokens)
-                out = await self.bot.loop.run_in_executor(None, text_generator)
-
-                response = self.serverSessions[server_id].enc.decode(out[0])
+                if message:
+                    text_generator = functools.partial(self.generate_text, server_id, context_tokens)
+                    out = await self.bot.loop.run_in_executor(None, text_generator)
+                else:
+                    text_generator = functools.partial(self.generate_uncon_text, server_id)
+                    out = await self.bot.loop.run_in_executor(None, text_generator)
+                response = message + self.serverSessions[server_id].enc.decode(out[0])
                 logging.info('RESPONSE GENERATED IN :' + str(round(time.time() - start, 2)) + ' seconds.')
                 logging.info('RESPONSE: ' + response)
                 logging.info('RESPONSE LEN: ' + str(len(response)))
@@ -79,9 +83,10 @@ class GPT2Bot(commands.Cog):
         self.is_interfering = False
     
     def generate_text(self, server_id, context_tokens):
-        return self.serverSessions[server_id].generate_text(context_tokens) #self.serverSessions[server_id].session.run(self.output, feed_dict={
-                #    self.context: [context_tokens for _ in range(1)]
-                #})[:, len(context_tokens):]
+        return self.serverSessions[server_id].generate_text(context_tokens)
+
+    def generate_uncon_text(self, server_id):
+        return self.serverSessions[server_id].generate_uncon_text()
 
     @commands.command()
     @commands.guild_only()
@@ -131,7 +136,7 @@ class GPT2Bot(commands.Cog):
             self.serverSessions[server_id].set_state(int(nsamples), int(length), float(temp), int(top_k), model_name)
             await ctx.trigger_typing()
             self.serverSessions[server_id].preinit_model()
-            self.serverSessions[server_id].session = tf.InteractiveSession(graph=tf.Graph())
+            self.serverSessions[server_id].session = tf.Session()
             await ctx.trigger_typing()
             self.serverSessions[server_id].init_model()
             await ctx.send('Succesfully Set Configuration!')
@@ -161,7 +166,7 @@ class GPT2Bot(commands.Cog):
         self.serverSessions[server_id].set_state(1,200,1,0,'117M')
         await ctx.trigger_typing()
         self.serverSessions[server_id].preinit_model()
-        self.serverSessions[server_id].session = tf.InteractiveSession(graph=tf.Graph())
+        self.serverSessions[server_id].session = tf.Session()
         await ctx.trigger_typing()
         self.serverSessions[server_id].init_model()
 
@@ -175,6 +180,46 @@ class GPT2Bot(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             text = "Sorry {}, you do not have permissions to do that!".format(ctx.message.author)
             await ctx.send(text)
+    @talk.error
+    async def talk_error(self, ctx, error):
+        if isinstance(error, commands.errors.CommandInvokeError):
+            self.is_interfering=False
+            logging.info(error.original)
+            print(error.original)
+            await ctx.send('Command failed!')
+        if isinstance(error, commands.errors.MissingRequiredArgument):
+            #text = "You must deliver a message to me nyan!"
+            #await ctx.send(text)
+            logging.info('MSG being generated!')
+            if (self.is_interfering):
+                await ctx.send('Currently talking to someone. Try again later.')
+                return
+            if (self.not_ready):
+                await ctx.send(self.not_ready_s)
+                return
+            server_id = ctx.message.guild.id
+            logging.info('Guild: ' + str(server_id))
+            self.is_interfering = True
+            for _ in range(self.serverSessions[server_id].nsamples):
+                async with ctx.typing():
+                    start = time.time()
+                    text_generator = functools.partial(self.serverSessions[server_id].generate_uncon_text)
+                    out = await self.bot.loop.run_in_executor(None, text_generator)
+                    response = self.serverSessions[server_id].enc.decode(out[0])
+                    logging.info('RESPONSE GENERATED IN :' + str(round(time.time() - start, 2)) + ' seconds.')
+                    logging.info('RESPONSE: ' + response)
+                    logging.info('RESPONSE LEN: ' + str(len(response)))
+
+                    response_chunk = 0
+                    chunk_size = 1990
+                    if (len(response) > 2000):
+                        while (len(response) > response_chunk):
+                            await ctx.send(response[response_chunk:response_chunk + chunk_size])
+                            response_chunk += chunk_size
+                    else:
+                        await ctx.send(response)
+
+            self.is_interfering = False
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -190,14 +235,16 @@ class GPT2Bot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        guilds = await self.bot.fetch_guilds(limit=150).flatten()
-        for guild in guilds:
-            self.guildIdList.append(guild.id)
-        self.serverSessions = {}
-        for serverid in self.guildIdList:
-            self.serverSessions[serverid] = gpt2_server_sessions(serverid)
-        logging.info('Spawned GPT-2')
-        self.not_ready = False
+        if self.not_ready:
+            self.not_ready = False
+            guilds = await self.bot.fetch_guilds(limit=150).flatten()
+            for guild in guilds:
+                self.guildIdList.append(guild.id)
+            self.serverSessions = {}
+            for serverid in self.guildIdList:
+                self.serverSessions[serverid] = gpt2_server_sessions(serverid)
+                logging.info('Spawned GPT-2')
+                self.not_ready = False
 
 def setup(bot):
     bot.add_cog(GPT2Bot(bot))
