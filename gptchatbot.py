@@ -30,6 +30,7 @@ class GPT2Bot(commands.Cog):
         self.guildIdList = []
         self.serverSessions = {}
         self.is_interfering = False
+        self.models = os.listdir(os.path.join('models'))
 
     @commands.command()
     async def init(self, ctx):
@@ -127,6 +128,9 @@ class GPT2Bot(commands.Cog):
             return
         if (self.not_ready):
             await ctx.send(self.not_ready_s)
+            return
+        if model_name not in self.models:
+            await ctx.send('Model ' + model_name+ ' does not exist. Please choose a different model!')
             return
         server_id = ctx.message.guild.id
 
