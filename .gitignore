@@ -1,5 +1,6 @@
 # Config
 *.secret
+config/servers
 auth.json
 db.json
 
