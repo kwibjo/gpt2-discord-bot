@@ -26,7 +26,7 @@ class GPT2Bot(commands.Cog):
         self.not_ready_s = "Bot has not been initialized. Please type !init to initialize the bot."
         self.is_interfering = True
         self.not_ready = True
-        self.sizeLimit=500
+        self.sizeLimit=1000 # NOTE: Set this according to your own machine.
         self.guildIdList = []
         self.serverSessions = {}
         self.is_interfering = False
@@ -118,7 +118,7 @@ class GPT2Bot(commands.Cog):
                     text_generator = functools.partial(self.generate_uncon_text, server_id)
                     out = await self.bot.loop.run_in_executor(None, text_generator)
                 response = message + self.serverSessions[server_id].enc.decode(out[0])
-                logging.info('RESPONSE GENERATED IN :' + str(round(time.time() - start, 2)) + ' SECONDS')
+                logging.info('RESPONSE GENERATED IN:' + str(round(time.time() - start, 2)) + ' SECONDS')
                 logging.info('RESPONSE: ' + response)
                 logging.info('RESPONSE LEN: ' + str(len(response)))
 
@@ -151,7 +151,7 @@ class GPT2Bot(commands.Cog):
         if (self.not_ready):
             await ctx.send(self.not_ready_s)
             return
-        logging.info('Current state.')
+        logging.info('CURRENT STATE.')
         server_id = ctx.message.guild.id
         await ctx.send('**Current state:**\n```'
             'N Samples: ' + str(self.serverSessions[server_id].nsamples) + "\n"
@@ -167,7 +167,7 @@ class GPT2Bot(commands.Cog):
         if (self.not_ready):
             await ctx.send(self.not_ready_s)
             return
-        logging.info('Help Invoked.')
+        logging.info('HELP INVOKED.')
         await ctx.send('Configure the bot session by typing: `!setconfig <nsamples> <length> <temperature> <topk> <model>`.\n'
             '`nsamples` = Number of samples to generate\n'
             '`length = Estimate on how much to generate after your prompt`\n'
@@ -187,7 +187,7 @@ class GPT2Bot(commands.Cog):
         if (self.not_ready):
             await ctx.send(self.not_ready_s)
             return
-        logging.info('Set configuration.')
+        logging.info('SET CONFIGURATION.')
         if (self.is_interfering):
             await ctx.send('Currently talking to someone. Try again later.')
             return
@@ -200,19 +200,64 @@ class GPT2Bot(commands.Cog):
         server_id = ctx.message.guild.id
 
         await ctx.trigger_typing()
-        if int(nsamples) * int(length) <= self.sizeLimit:
+        if int(nsamples) * int(length) <= sizeLimit:
+            await ctx.send('Setting configuration. Please wait...')
             self.serverSessions[server_id].shutdown()
             self.serverSessions[server_id].set_state(int(nsamples), int(length), float(temp), int(top_k), model_name)
+            await ctx.send('**Using settings:**\n```'
+                'N Samples: ' + str(nsamples) + "\n"
+                'Max Length: ' + str(length) + "\n"
+                'Temperature: ' + str(temp) + "\n"
+                'Top K: ' + str(top_k) + "\n"
+                'Model: ' + str(model_name) + "```")
             await ctx.trigger_typing()
             self.serverSessions[server_id].preinit_model()
             self.serverSessions[server_id].session = tf.Session()
             await ctx.trigger_typing()
             self.serverSessions[server_id].init_model()
-            await ctx.send('Succesfully Set Configuration!')
+            await ctx.send('Succesfully set configuration!')
             if (self.serverSessions[server_id].nsamples * self.serverSessions[server_id].length > 100):
                 await ctx.send('The configuration parameters are process intensive, responses may take a while.')
         else:
             await ctx.send('Configuration failed. The configuration parameters too process intensive.')
+
+    @commands.command()
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def debugsetconfig(self, ctx, nsamples: int, length: int, temp: float, top_k: int, model_name: str):
+        if (self.not_ready):
+            await ctx.send(self.not_ready_s)
+            return
+        logging.info('SET CONFIGURATION.')
+        if (self.is_interfering):
+            await ctx.send('Currently talking to someone. Try again later.')
+            return
+        if (self.not_ready):
+            await ctx.send(self.not_ready_s)
+            return
+        if model_name not in self.models:
+            await ctx.send('Model ' + model_name+ ' does not exist. Please choose a different model!')
+            return
+        server_id = ctx.message.guild.id
+
+        await ctx.trigger_typing()
+        await ctx.send('`CAUTION! Size limits are disabled. Please be considerate of everyone else who uses this. :)``')
+        await ctx.send('`Setting configuration. Please wait...`')
+        self.serverSessions[server_id].shutdown()
+        await ctx.send('`Shutting down tensorflow model...`')
+        self.serverSessions[server_id].set_state(int(nsamples), int(length), float(temp), int(top_k), model_name)
+        await ctx.trigger_typing()
+        await ctx.send('`Preinit tensorflow model...`')
+        self.serverSessions[server_id].preinit_model()
+        self.serverSessions[server_id].session = tf.Session()
+        await ctx.trigger_typing()
+        await ctx.send('`Setting up new tensorflow model...`')
+        self.serverSessions[server_id].init_model()
+        await ctx.send('`Succesfully set configuration!`')
+        if (self.serverSessions[server_id].nsamples * self.serverSessions[server_id].length > 100):
+            await ctx.send('`nsamples: ' + str(self.serverSessions[server_id].nsamples) + ' * length: ' + str(self.serverSessions[server_id].length) + ' '
+            '(' + str(self.serverSessions[server_id].nsamples * self.serverSessions[server_id].length) + ') ' + 'is above the warning threshold of 100`')
+            await ctx.send('`The configuration parameters are process intensive, responses may take a while...`')
 
     @commands.command()
     @commands.guild_only()
@@ -221,7 +266,7 @@ class GPT2Bot(commands.Cog):
         if (self.not_ready):
             await ctx.send(self.not_ready_s)
             return
-        logging.info('Setting to Default configuration.')
+        logging.info('Setting to DEFAULT configuration.')
         if (self.is_interfering):
             await ctx.send('Currently talking to someone. Try again later.')
             return
@@ -239,11 +284,12 @@ class GPT2Bot(commands.Cog):
         await ctx.trigger_typing()
         self.serverSessions[server_id].init_model()
 
-        await ctx.send('Succesfully Set Default Configuration!')
+        await ctx.send('Succesfully set `default` configuration!')
 
     @default.error
     @helpconfig.error
     @setconfig.error
+    @debugsetconfig.error
     @getconfig.error
     async def default_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
