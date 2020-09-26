@@ -190,19 +190,25 @@ class GPT2Bot(commands.Cog):
         logging.info('SET CONFIGURATION.')
         if (self.is_interfering):
             await ctx.send('Currently talking to someone. Try again later.')
+            logging.info('BOT BUSY.')
             return
         if (self.not_ready):
             await ctx.send(self.not_ready_s)
+            logging.info('NOT READY.')
             return
         if model_name not in self.models:
-            await ctx.send('Model ' + model_name+ ' does not exist. Please choose a different model!')
+            await ctx.send('Model ' + model_name + ' does not exist. Please choose a different model!')
+            logging.info('MODEL DOESNT EXIST.')
             return
         server_id = ctx.message.guild.id
 
         await ctx.trigger_typing()
+        logging.info('CHECKING SIZE IS OK.')
         if int(nsamples) * int(length) <= sizeLimit:
             await ctx.send('Setting configuration. Please wait...')
+            logging.info('SHUTTING DOWN.')
             self.serverSessions[server_id].shutdown()
+            logging.info('SET STATE.')
             self.serverSessions[server_id].set_state(int(nsamples), int(length), float(temp), int(top_k), model_name)
             await ctx.send('**Using settings:**\n```'
                 'N Samples: ' + str(nsamples) + "\n"
@@ -211,15 +217,20 @@ class GPT2Bot(commands.Cog):
                 'Top K: ' + str(top_k) + "\n"
                 'Model: ' + str(model_name) + "```")
             await ctx.trigger_typing()
+            logging.info('PREINIT.')
             self.serverSessions[server_id].preinit_model()
+            logging.info('SET SESSION.')
             self.serverSessions[server_id].session = tf.Session()
             await ctx.trigger_typing()
+            logging.info('INIT MODEL.')
             self.serverSessions[server_id].init_model()
             await ctx.send('Succesfully set configuration!')
             if (self.serverSessions[server_id].nsamples * self.serverSessions[server_id].length > 100):
                 await ctx.send('The configuration parameters are process intensive, responses may take a while.')
+                logging.info('COMPLETE.')
         else:
             await ctx.send('Configuration failed. The configuration parameters too process intensive.')
+            logging.info('FAILED. TOO INTENSVE')
 
     @commands.command()
     @commands.guild_only()
@@ -241,23 +252,35 @@ class GPT2Bot(commands.Cog):
         server_id = ctx.message.guild.id
 
         await ctx.trigger_typing()
-        await ctx.send('`CAUTION! Size limits are disabled. Please be considerate of everyone else who uses this. :)``')
+        await ctx.send('`CAUTION! Size limits are disabled. Please be considerate of everyone else who uses this. :)`')
         await ctx.send('`Setting configuration. Please wait...`')
-        self.serverSessions[server_id].shutdown()
+        logging.info('SHUTTING DOWN.')
         await ctx.send('`Shutting down tensorflow model...`')
+        self.serverSessions[server_id].shutdown()
+        logging.info('SET STATE.')
+        await ctx.send('**Using settings:**\n```'
+            'N Samples: ' + str(nsamples) + "\n"
+            'Max Length: ' + str(length) + "\n"
+            'Temperature: ' + str(temp) + "\n"
+            'Top K: ' + str(top_k) + "\n"
+            'Model: ' + str(model_name) + "```")
         self.serverSessions[server_id].set_state(int(nsamples), int(length), float(temp), int(top_k), model_name)
         await ctx.trigger_typing()
+        logging.info('PREINIT.')
         await ctx.send('`Preinit tensorflow model...`')
         self.serverSessions[server_id].preinit_model()
+        logging.info('SET SESSION.')
         self.serverSessions[server_id].session = tf.Session()
         await ctx.trigger_typing()
         await ctx.send('`Setting up new tensorflow model...`')
+        logging.info('INIT MODEL.')
         self.serverSessions[server_id].init_model()
         await ctx.send('`Succesfully set configuration!`')
         if (self.serverSessions[server_id].nsamples * self.serverSessions[server_id].length > 100):
             await ctx.send('`nsamples: ' + str(self.serverSessions[server_id].nsamples) + ' * length: ' + str(self.serverSessions[server_id].length) + ' '
             '(' + str(self.serverSessions[server_id].nsamples * self.serverSessions[server_id].length) + ') ' + 'is above the warning threshold of 100`')
             await ctx.send('`The configuration parameters are process intensive, responses may take a while...`')
+            logging.info('COMPLETE.')
 
     @commands.command()
     @commands.guild_only()
