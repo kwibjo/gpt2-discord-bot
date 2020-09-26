@@ -98,11 +98,12 @@ class GPT2Bot(commands.Cog):
             return
         logging.info('Current state.')
         server_id = ctx.message.guild.id
-        await ctx.send('N Samples: ' + str(self.serverSessions[server_id].nsamples))
-        await ctx.send('Max Length: ' + str(self.serverSessions[server_id].length))
-        await ctx.send('Temperature: ' + str(self.serverSessions[server_id].temperature))
-        await ctx.send('Top K: ' + str(self.serverSessions[server_id].top_k))
-        await ctx.send('Model: ' + str(self.serverSessions[server_id].model_name))
+        await ctx.send('**Current state:**\n```'
+            'N Samples: ' + str(self.serverSessions[server_id].nsamples) + "\n"
+            'Max Length: ' + str(self.serverSessions[server_id].length) + "\n"
+            'Temperature: ' + str(self.serverSessions[server_id].temperature) + "\n"
+            'Top K: ' + str(self.serverSessions[server_id].top_k) + "\n"
+            'Model: ' + str(self.serverSessions[server_id].model_name) + "```")
 
     @commands.command()
     @commands.guild_only()
