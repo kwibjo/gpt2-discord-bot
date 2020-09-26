@@ -21,7 +21,7 @@ class GPT2Bot(commands.Cog):
 
     def __init__(self, bot):
         logging.basicConfig(level=logging.INFO)
-        
+
         self.bot = bot
         self.not_ready_s = "Bot has not been initialized. Please type !init to initialize the bot."
         self.is_interfering = True
@@ -71,7 +71,7 @@ class GPT2Bot(commands.Cog):
                 logging.info('RESPONSE GENERATED IN :' + str(round(time.time() - start, 2)) + ' seconds.')
                 logging.info('RESPONSE: ' + response)
                 logging.info('RESPONSE LEN: ' + str(len(response)))
-                
+
                 response_chunk = 0
                 chunk_size = 1990
                 if (len(response) > 2000):
@@ -82,7 +82,7 @@ class GPT2Bot(commands.Cog):
                     await ctx.send(response)
 
         self.is_interfering = False
-    
+
     def generate_text(self, server_id, context_tokens):
         return self.serverSessions[server_id].generate_text(context_tokens)
 
@@ -112,7 +112,7 @@ class GPT2Bot(commands.Cog):
             await ctx.send(self.not_ready_s)
             return
         logging.info('Help Invoked.')
-        await ctx.send('Configure the bot session by `!setconfig <nsamples> <length> <temperature> <topk> <model: 117M or 345M>`.')
+        await ctx.send('Configure the bot session by `!setconfig <nsamples> <length> <temperature> <topk> <model: 117M, 345M, 774M or 1558M>`.')
         await ctx.send('Get current state by `!getconfig`.')
 
     @commands.command()
@@ -175,7 +175,7 @@ class GPT2Bot(commands.Cog):
         self.serverSessions[server_id].init_model()
 
         await ctx.send('Succesfully Set Default Configuration!')
-		
+
     @default.error
     @helpconfig.error
     @setconfig.error

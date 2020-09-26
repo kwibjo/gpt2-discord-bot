@@ -10,9 +10,9 @@ pip install -r requirements.txt
 
 - Run the script `download_model.sh` by:
 ```
-sh download_model.sh 117M
+python download_model.py 1558M
 ```
-_This should download the gpt-2 model. `117M` is the smallest model, `345M` is a larger variant._
+_This should download the gpt-2 model. `117M` is the smallest model, `345M, 774M` are larger and `1558M` is the largest variant._
 
 - Create `config` folder
 
@@ -47,7 +47,7 @@ Each server gets its own Tensorflow session with its own model. This gives every
 The !setconfig command sets the neccessary parameters!  
 Only user with message managing permissions on the respective servers can user the following commands:
 ```conf_server
-!setconfig <nsamples> <length> <temperature> <topk> <model: 117M or 345M>
+!setconfig <nsamples> <length> <temperature> <topk> <model: 117M, 345M, 774M or 1558M>
 !getconfig
 !default
 ```

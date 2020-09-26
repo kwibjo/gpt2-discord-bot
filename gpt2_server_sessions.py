@@ -18,7 +18,7 @@ class gpt2_server_sessions:
         self.init_state(json_conf['nsamples'],json_conf['length'],json_conf['temperature'],json_conf['top_k'],json_conf['model_name'])
         self.reset_model()
 
-    def init_state(self, nsamples=1, length=200, temperature=1, top_k=0, model_name='117M'):
+    def init_state(self, nsamples=1, length=200, temperature=1, top_k=0, model_name='1558M'):
         self.model_name = model_name
         self.batch_size = 1
         self.seed = 42069
@@ -27,7 +27,7 @@ class gpt2_server_sessions:
         self.temperature = temperature
         self.top_k = top_k
 
-    def set_state(self, nsamples, length, temperature, top_k, model_name='117M'):
+    def set_state(self, nsamples, length, temperature, top_k, model_name='1558M'):
         self.nsamples = nsamples
         self.length = length
         self.temperature = temperature
@@ -99,7 +99,7 @@ class gpt2_server_sessions:
 
     def default_config(self):
         return {
-        'model_name':'117M',
+        'model_name':'1558M',
         'nsamples':1,
         'length':200,
         'temperature':1,

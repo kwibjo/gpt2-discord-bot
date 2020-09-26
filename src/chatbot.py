@@ -6,7 +6,7 @@ import tensorflow as tf
 
 # import gpt.model, gpt.sample, gpt.encoder
 
-model_name='117M'
+model_name='1558M'
 batch_size = 1
 seed = None
 nsamples=1
