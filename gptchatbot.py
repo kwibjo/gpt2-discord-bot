@@ -92,6 +92,61 @@ class GPT2Bot(commands.Cog):
     @commands.command()
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True)
+    async def debugtalk(self, ctx, *, message):
+        logging.info('MSG: ' + message)
+        if (self.is_interfering):
+            await ctx.send('Currently talking to someone. Try again later.')
+            return
+        if (self.not_ready):
+            await ctx.send(self.not_ready_s)
+            await ctx.send("Bot isn't ready yet.")
+            return
+        server_id = ctx.message.guild.id
+        await ctx.send('```Guild: ' + str(server_id) + '\n'
+            'Message received, generating response...```')
+        logging.info('Guild: ' + str(server_id))
+        self.is_interfering = True
+        if message:
+            context_tokens = self.serverSessions[server_id].enc.encode(message)
+        for _ in range(self.serverSessions[server_id].nsamples):
+            async with ctx.typing():
+                start = time.time()
+                if message:
+                    text_generator = functools.partial(self.generate_text, server_id, context_tokens)
+                    out = await self.bot.loop.run_in_executor(None, text_generator)
+                else:
+                    text_generator = functools.partial(self.generate_uncon_text, server_id)
+                    out = await self.bot.loop.run_in_executor(None, text_generator)
+                response = message + self.serverSessions[server_id].enc.decode(out[0])
+                logging.info('RESPONSE GENERATED IN :' + str(round(time.time() - start, 2)) + ' SECONDS')
+                logging.info('RESPONSE: ' + response)
+                logging.info('RESPONSE LEN: ' + str(len(response)))
+
+
+                response_chunk = 0
+                chunk_size = 1990
+                if (len(response) > 2000):
+                    while (len(response) > response_chunk):
+                        await ctx.send(response[response_chunk:response_chunk + chunk_size])
+                        response_chunk += chunk_size
+                        await ctx.send('```Response generated in: ' + str(round(time.time() - start, 2)) + ' seconds.\n'
+                            'Response length: ' + str(len(response)) + '```')
+                else:
+                    await ctx.send(response)
+                    await ctx.send('```Response generated in: ' + str(round(time.time() - start, 2)) + ' seconds.\n'
+                        'Response length: ' + str(len(response)) + '```')
+
+        self.is_interfering = False
+
+    def generate_text(self, server_id, context_tokens):
+        return self.serverSessions[server_id].generate_text(context_tokens)
+
+    def generate_uncon_text(self, server_id):
+        return self.serverSessions[server_id].generate_uncon_text()
+
+    @commands.command()
+    @commands.guild_only()
+    @commands.has_permissions(manage_messages=True)
     async def getconfig(self, ctx):
         if (self.not_ready):
             await ctx.send(self.not_ready_s)
@@ -113,8 +168,17 @@ class GPT2Bot(commands.Cog):
             await ctx.send(self.not_ready_s)
             return
         logging.info('Help Invoked.')
-        await ctx.send('Configure the bot session by `!setconfig <nsamples> <length> <temperature> <topk> <model: 117M, 345M, 774M or 1558M>`.')
-        await ctx.send('Get current state by `!getconfig`.')
+        await ctx.send('Configure the bot session by typing: `!setconfig <nsamples> <length> <temperature> <topk> <model>`.\n'
+            '`nsamples` = Number of samples to generate\n'
+            '`length = Estimate on how much to generate after your prompt`\n'
+            '`temperature` = Lower temperature results in less random completions. As the temperature approaches zero, '
+            'the model will become deterministic and repetitive. Higher temperature results in more random completions.\n'
+            '`topk` = Integer value controlling diversity. 1 means only 1 word is considered for each step (token), '
+            'resulting in deterministic completions, while 40 means 40 words are considered at each step. '
+            '0 is a special setting meaning no restrictions. 40 generally is a good value.\n'
+            '`model` = Set which model is used for generating text. The larger the model, the longer it will take to generate\n'
+            'available models are `117M`, `345M`, `774M` or `1558M`\n'
+            'Get current state by `!getconfig`.')
 
     @commands.command()
     @commands.guild_only()
@@ -186,6 +250,7 @@ class GPT2Bot(commands.Cog):
             text = "Sorry {}, you do not have permissions to do that!".format(ctx.message.author)
             await ctx.send(text)
     @talk.error
+    @debugtalk.error
     async def talk_error(self, ctx, error):
         if isinstance(error, commands.errors.CommandInvokeError):
             self.is_interfering=False
