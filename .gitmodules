@@ -1,0 +1,3 @@
+[submodule "finetune-gpt2xl"]
+	path = finetune-gpt2xl
+	url = https://github.com/Xirider/finetune-gpt2xl.git
